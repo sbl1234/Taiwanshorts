@@ -1,0 +1,66 @@
+<?php
+//date_default_timezone_set("America/North_Dakota/Beulah");
+date_default_timezone_set('Asia/Taipei');
+ 	require_once ('dbconnect.php');
+
+    $data = null;
+
+   $conn1 = new mysqli($dbhost, $dbuser, $dbpass, $dbname);
+   /*$result_sbl_ticks = $conn1->query("SELECT sr_no, sbl_qty, date FROM stock_data.sbl_info WHERE ticker = '".$_GET['ticker']."' order by sr_no asc");
+   
+   while ($sbl = $result_sbl_ticks->fetch_assoc()) {
+       $subdata = null;
+       
+       list($year, $month, $day) = preg_split('/[-]/', $sbl['date']); 
+//echo $hour.', '.$minute.', '.$second.', '.$month.', '.$day.', '.$year;
+        $subdata[] = (mktime(8, 0, 0, (int)$month, (int)$day, (int)$year) - 5*60*60)*1000;
+
+        $subdata[] = (int)$sbl['sbl_qty'];
+        $data[] = $subdata;
+        
+        $subdata = null;
+        
+        $subdata[] = (mktime(18, 30, 0, (int)$month, (int)$day, (int)$year) - 5*60*60)*1000;
+
+        $subdata[] = (int)$sbl['sbl_qty'];
+        $data[] = $subdata;
+   }*/
+   
+   
+   $sblarr = null;
+   
+   $result_sbl_ticks = $conn1->query("SELECT max(sbl_qty) as sbl_qty, date FROM stock_data.sbl_info WHERE ticker = '".$_GET['ticker']."' group by date order by date asc");
+   
+   while ($sbl = $result_sbl_ticks->fetch_assoc()) {
+       
+       $sblarr[$sbl['date']] = $sbl['sbl_qty'];
+   }
+   
+   $result_avail_ticks = $conn1->query("SELECT sr_no, avail, created_at, date FROM stock_data.avail_info_history WHERE `date` > DATE( CURDATE( ) ) - INTERVAL 365 DAY AND ticker = '".$_GET['ticker']."' order by sr_no asc");
+   
+   $lastsod = 0;
+   
+   while ($avail = $result_avail_ticks->fetch_assoc()) {
+       $subdata = null;
+       
+       list($year, $month, $day, $hour, $minute, $second) = preg_split('/[- :]/', $avail['created_at']); 
+//echo $hour.', '.$minute.', '.$second.', '.$month.', '.$day.', '.$year;
+        $timestamp = (mktime((int)$hour, (int)$minute, (int)$second, (int)$month, (int)$day, (int)$year));
+//echo date("Hi", $timestamp)."\n";
+        if(date("Hi", $timestamp) > "0800" && date("Hi", $timestamp) < "1830") {
+        //if($hour.$minute > "0800" && $hour.$minute < "1830") {
+
+            //$subdata[] = ((int)$timestamp - 5*60*60)*1000;
+            $subdata[] = ((int)$timestamp + 8*60*60)*1000;
+            
+            if (isset($sblarr[$avail['date']])) $lastsod = (int)$sblarr[$avail['date']];
+            //echo $avail['created_at']."-".$lastsod."===";
+            $subdata[] = $lastsod; ;
+            $data[] = $subdata;
+            
+        }
+   }
+   
+   echo json_encode($data);
+   
+?>
